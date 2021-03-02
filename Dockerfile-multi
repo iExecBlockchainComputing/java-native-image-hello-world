@@ -1,0 +1,58 @@
+FROM gradle:5.5 as gradle-builder
+COPY --chown=gradle:gradle . /home/gradle
+WORKDIR /home/gradle/
+# Build application jar
+RUN gradle build
+
+
+FROM ghcr.io/graalvm/graalvm-ce:21.0.0.2 as graalvm-downloader
+# Will inject Java in next stage
+RUN echo $JAVA_HOME
+# It's easier to install native-image with gu from a first stage of a multi-stage
+# dockerfile and inject it in next stage
+RUN gu install native-image
+
+
+FROM registry.scontain.com:5050/sconecuratedimages/apps:8u181-jdk-alpine-scone3 AS crosscompiler
+# FROM registry.scontain.com:5050/sconecuratedimages/iexec:openjdk11-crosscompiler-scone-3.0 AS crosscompiler
+USER root
+# GraalVM version should match graalvm-downloader one
+ARG GRAALVM_VERSION=21.0.0.2
+# Default Java is now the one of GraalVM
+ENV JAVA_HOME=/opt/graalvm-ce-java11-$GRAALVM_VERSION
+ENV PATH=$JAVA_HOME/bin:$PATH
+COPY --from=graalvm-downloader $JAVA_HOME $JAVA_HOME/.
+
+# Required for `java not found` after java cmd
+RUN wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+    wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.33-r0/glibc-2.33-r0.apk  && \
+    apk add glibc-2.33-r0.apk
+# Required for `error while loading shared libraries: libz.so.1` after java cmd
+ENV LD_LIBRARY_PATH=/lib:/usr/lib
+# Install zlib if missing in image
+#RUN apk add zlib-dev
+
+# Let's have a look to installed dependencies
+RUN find / -name *gcc*
+RUN find / -name *musl*
+
+# Convert the application jar to a single binary (a native image)
+COPY --from=gradle-builder /home/gradle/build/libs/ .
+# Check application jar is working
+RUN java -jar hello-world.jar
+# Turn to an native image app
+RUN native-image --static --libc=musl -jar hello-world.jar
+
+# Last cmd logs
+#Step 23/23 : RUN cd $BUILD_DIR && native-image --static --libc=musl -jar hello-world.jar
+# ---> Running in 3237cd1787cb
+#Picked up JAVA_TOOL_OPTIONS: -Xmx256m
+#[hello-world:25]    classlist:   1,194.23 ms,  0.96 GB
+#[hello-world:25]        setup:     449.67 ms,  0.96 GB
+#Error: Default native-compiler executable 'musl-gcc' not found via environment variable PATH
+#Error: To prevent native-toolchain checking provide command-line option -H:-CheckToolchain
+#Error: Use -H:+ReportExceptionStackTraces to print stacktrace of underlying exception
+#Error: Image build request failed with exit status 1
+#The command '/bin/sh -c cd $BUILD_DIR && native-image --static --libc=musl -jar hello-world.jar' returned a non-zero code: 1
+
+#docker build -f Dockerfile-multi -t java-graalvm-hello-world-multi .
