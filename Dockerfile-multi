@@ -1,8 +1,9 @@
 FROM gradle:5.5 as gradle-builder
-COPY --chown=gradle:gradle . /home/gradle
 WORKDIR /home/gradle/
+COPY build.gradle settings.gradle  ./
+COPY src/ src/
 # Build application jar
-RUN gradle build
+RUN gradle build --no-daemon
 
 
 FROM ghcr.io/graalvm/graalvm-ce:21.0.0.2 as graalvm-downloader
@@ -14,7 +15,7 @@ RUN gu install native-image
 
 
 FROM registry.scontain.com:5050/sconecuratedimages/apps:8u181-jdk-alpine-scone3 AS crosscompiler
-# FROM registry.scontain.com:5050/sconecuratedimages/iexec:openjdk11-crosscompiler-scone-3.0 AS crosscompiler
+#FROM registry.scontain.com:5050/sconecuratedimages/iexec:openjdk11-crosscompiler-scone-3.0 AS crosscompiler
 USER root
 # GraalVM version should match graalvm-downloader one
 ARG GRAALVM_VERSION=21.0.0.2
