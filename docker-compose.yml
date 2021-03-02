@@ -1,0 +1,19 @@
+version: '3.4'
+
+services:
+  cas:
+    image: iexechub/sconecuratedimages-iexec:cas-v3.0
+    container_name: cas
+    ports:
+      - 18765:18765
+      - 8081:8081
+    devices:
+      - /dev/isgx
+
+  las:
+    image: iexechub/sconecuratedimages-iexec:las-v3.0
+    container_name: las
+    ports:
+      - 18766:18766
+    devices:
+      - /dev/isgx

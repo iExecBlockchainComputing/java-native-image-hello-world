@@ -1,0 +1,22 @@
+version: '3.4'
+
+networks:
+  hello-world_default:
+    external: true
+
+services:
+  hello-world:
+    image: nexus.iex.ec/hello-world
+    container_name: hello-world
+    devices:
+      - /dev/isgx
+    environment:
+      - SCONE_LAS_ADDR=las
+      - SCONE_CAS_ADDR=cas
+      - SCONE_HEAP=1G
+      - SCONE_LOG=7
+      - SCONE_MODE=hw
+      - SCONE_ALPINE=1
+      - SCONE_CONFIG_ID=s1/hello-world
+    networks:
+      - hello-world_default

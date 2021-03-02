@@ -1,0 +1,11 @@
+#!/bin/bash
+
+BASE_DIR=$(dirname $0)
+
+# Fresh CAS & Post session
+PALAEMON_DIR=$BASE_DIR
+
+cat $PALAEMON_DIR/palaemon-conf.yml
+curl -k --cert $PALAEMON_DIR/conf/client.crt --key $PALAEMON_DIR/conf/client-key.key --data-binary @$PALAEMON_DIR/palaemon-conf.yml -X POST https://localhost:8081/session
+
+docker-compose -f $PALAEMON_DIR/docker-compose.yml up

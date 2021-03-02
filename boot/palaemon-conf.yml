@@ -1,0 +1,26 @@
+## Palaemon config ##
+name: s1
+digest: create
+
+services:
+   - name: hello-world
+     image_name: hello-world-image
+     mrenclaves: [40fb2204e088d23b1abc6c2b423f8ad4d5382c4041b129e160992cd2788078b1]
+     pwd: /
+     command: /app/hello-world
+     fspf_path: /fspf.pb
+     fspf_key: cfafbe31938f305a88d36f816390c54003ef7d6455a96e0d87c447cdb9d2f411
+     fspf_tag: 0c246b737ab42ff78021e373ebf527e1
+     environment:
+       CONFIDENTIAL_VAR1: p4ssw0rd
+       #LD_LIBRARY_PATH: ""
+
+images:
+   - name: hello-world-image
+     mrenclaves: [a5681b7b4c77f284880c95f194c8db17929512cacae021e23cd698fe1100784e]
+     volumes:
+        - name: scone
+          path: /scone
+
+volumes:
+   - name: scone

@@ -1,0 +1,9 @@
+BASE_DIR=$(dirname $0)
+cd $BASE_DIR
+
+docker rm -f las cas hello-world > /dev/null
+
+docker-compose up -d
+sleep 4
+
+$BASE_DIR/boot/up-hello-world
