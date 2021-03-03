@@ -16,6 +16,7 @@ RUN gu install native-image
 
 FROM registry.scontain.com:5050/sconecuratedimages/apps:8u181-jdk-alpine-scone3 AS crosscompiler
 #FROM registry.scontain.com:5050/sconecuratedimages/iexec:openjdk11-crosscompiler-scone-3.0 AS crosscompiler
+#FROM registry.scontain.com:5050/sconecuratedimages/crosscompilers:alpine-scone3.0.0 AS crosscompiler
 USER root
 # GraalVM version should match graalvm-downloader one
 ARG GRAALVM_VERSION=21.0.0.2
