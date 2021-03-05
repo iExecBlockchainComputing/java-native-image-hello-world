@@ -29,10 +29,11 @@ RUN java -jar hello-world.jar
 # Required for `libz.a is missing` after native-image cmd
 # Install zlib if missing in image
 RUN apt-get install -y libz-dev zlib1g-dev
-#ENV LIBRARY_PATH=/usr:/usr/lib:/usr/lib/x86_64-linux-gnu:$LIBRARY_PATH
+#ENV LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:$LIBRARY_PATH
 RUN cp /usr/lib/x86_64-linux-gnu/libz.a $JAVA_HOME/lib/static/linux-amd64/musl
 ## Add musl-gcc to PATH
-ENV PATH=/opt/scone/cross-compiler/x86_64-linux-musl/bin/:$PATH
+RUN ln -s /opt/scone/cross-compiler/x86_64-linux-musl/bin/x86_64-linux-musl-gcc /usr/bin/musl-gcc
+ENV PATH=/usr/bin:$PATH
 # Turn to a native image app
 RUN native-image --static --libc=musl -jar hello-world.jar
 # Check application binary is working at build-time
