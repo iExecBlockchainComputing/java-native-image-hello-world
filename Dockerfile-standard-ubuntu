@@ -1,0 +1,45 @@
+FROM gradle:5.5 as gradle-builder
+WORKDIR /home/gradle/
+COPY build.gradle settings.gradle  ./
+COPY src/ src/
+# Build application jar
+RUN gradle build --no-daemon
+
+
+FROM ghcr.io/graalvm/graalvm-ce:21.0.0.2 as graalvm-downloader
+# Will inject Java in next stage
+RUN echo $JAVA_HOME
+# It's easier to install native-image with gu from a first stage of a multi-stage
+# dockerfile and inject it in next stage
+RUN gu install native-image
+
+
+FROM ubuntu:18.04
+RUN apt-get update
+# GraalVM version should match graalvm-downloader one
+ARG GRAALVM_VERSION=21.0.0.2
+# Default Java is now the one of GraalVM
+ENV JAVA_HOME=/opt/graalvm-ce-java11-$GRAALVM_VERSION
+ENV PATH=$JAVA_HOME/bin:$PATH
+COPY --from=graalvm-downloader $JAVA_HOME $JAVA_HOME/.
+# Convert the application jar to a single binary (a native image)
+COPY --from=gradle-builder /home/gradle/build/libs/ .
+# Check application jar is working
+RUN java -jar hello-world.jar
+# Required for `libz.a is missing` after native-image cmd
+# Install zlib if missing in image
+RUN apt-get install -y libz-dev zlib1g-dev
+#ENV LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:$LIBRARY_PATH
+RUN cp /usr/lib/x86_64-linux-gnu/libz.a $JAVA_HOME/lib/static/linux-amd64/musl
+## Add musl-gcc to PATH
+#RUN ln -s /opt/scone/cross-compiler/x86_64-linux-musl/bin/x86_64-linux-musl-gcc /usr/bin/musl-gcc
+RUN apt-get install -y gcc musl-tools
+ENV PATH=/usr/bin:$PATH
+# Turn to a native image app
+RUN native-image --static --libc=musl -jar hello-world.jar
+# Check application binary is working at build-time
+RUN /hello-world
+ENTRYPOINT /hello-world
+
+
+#docker build -f Dockerfile-standard-ubuntu -t java-graalvm-hello-world-standard-ubuntu .
