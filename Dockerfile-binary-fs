@@ -1,0 +1,38 @@
+FROM gradle:5.5 as gradle-builder
+WORKDIR /home/gradle/
+COPY build.gradle settings.gradle  ./
+COPY src/ src/
+# Build application jar
+RUN gradle build --no-daemon
+
+
+# First stage: prepare binary fs
+#FROM registry.scontain.com:5050/sconecuratedimages/public-apps:openjdk-11-alpine-scone3.0 AS binary-fs
+#FROM registry.scontain.com:5050/sconecuratedimages/apps:jdk-alpine-scone3.0 AS binary-fs
+FROM registry.scontain.com:5050/sconecuratedimages/apps:openjdk-11-alpine AS binary-fs
+COPY --from=gradle-builder /home/gradle/build/libs/ .
+RUN SCONE_MODE=auto scone binaryfs / /binary-fs.c -v \
+        --include '/usr/lib/jvm/java-11-openjdk/lib/*' \
+        --include '/usr/lib/jvm/java-11-openjdk/lib/server/*' \
+        --include /hello-world.jar
+
+
+# Second stage: compile the binary fs
+FROM registry.scontain.com:5050/sconecuratedimages/crosscompilers:alpine AS crosscompiler
+COPY --from=binary-fs /binary-fs.c /.
+RUN scone gcc /binary-fs.c -O0 -shared -o /libbinary-fs.so
+
+
+# Third stage: patch the binary-fs into the enclave executable
+FROM registry.scontain.com:5050/sconecuratedimages/apps:openjdk-11-alpine
+COPY --from=crosscompiler /libbinary-fs.so /.
+RUN apk add --no-cache patchelf && \
+    patchelf --add-needed libbinary-fs.so `which java` && \
+    apk del patchelf
+ENV SCONE_HEAP=512M
+ENV SCONE_LOG=debug
+ENV LD_LIBRARY_PATH="/"
+CMD sh -c "java -jar /hello-world.jar"
+
+
+#docker build -f Dockerfile-binary-fs -t hello-world-scone-binary-fs .
